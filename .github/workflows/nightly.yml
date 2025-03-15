@@ -45,7 +45,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         $TAG = Get-Date -AsUTC -Format "yyyyMMddHHmm"
-        "version=Nightly $TAG" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+        "version=Nightly-$TAG" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
     - name: Create release
       id: create_release
