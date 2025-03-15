@@ -1,0 +1,69 @@
+name: External Repo Build and Release
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+
+    steps:
+    - name: Clone target repository
+      run: git clone --depth 1 https://github.com/CherryHQ/cherry-studio.git
+
+    - name: Setup Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+
+    - name: Initialize corepack
+      working-directory: ./cherry-studio
+      run: |
+        corepack enable
+        corepack prepare yarn@4.6.0 --activate
+
+    - name: Install dependencies
+      working-directory: ./cherry-studio
+      run: yarn install
+
+    - name: Build projects
+      working-directory: ./cherry-studio
+      run: |
+        yarn build:win
+
+    - name: Collect artifacts
+      run: |
+        New-Item -ItemType Directory -Path release_assets -Force
+        Get-ChildItem -Path cherry-studio/dist -File -Depth 1 | Copy-Item -Destination release_assets -Verbose
+        Compress-Archive -Path ./release_assets/* -DestinationPath ./output.zip -Force
+
+    - name: Generate version
+      id: gen_version
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        $TAG = Get-Date -AsUTC -Format "yyyyMMddHHmm"
+        "version=Nightly $TAG" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+    - name: Create release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.gen_version.outputs.version }}
+        release_name: ${{ steps.gen_version.outputs.version }}
+        draft: false
+        prerelease: true
+    
+    - name: Upload files
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./output.zip
+        asset_name: output.zip
+        asset_content_type: application/zip
