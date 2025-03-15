@@ -9,6 +9,9 @@ jobs:
   build-release:
     runs-on: windows-latest
 
+    permissions:
+      contents: write
+
     steps:
     - name: Clone target repository
       run: git clone --depth 1 https://github.com/CherryHQ/cherry-studio.git
